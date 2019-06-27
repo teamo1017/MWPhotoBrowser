@@ -6,7 +6,6 @@
 //  Copyright 2010 d3i. All rights reserved.
 //
 
-#import <SDWebImage/SDWebImageDecoder.h>
 #import <SDWebImage/SDWebImageManager.h>
 #import <SDWebImage/SDWebImageOperation.h>
 #import <SDWebImage/SDWebImageDownloader.h>
@@ -75,6 +74,7 @@
 - (id)initWithURL:(NSURL *)url {
     if ((self = [super init])) {
         self.photoURL = url;
+        self.image = [[SDImageCache sharedImageCache] imageFromDiskCacheForKey:url.absoluteString];
         [self setup];
     }
     return self;
@@ -212,7 +212,7 @@
 // Load from local file
 - (void)_performLoadUnderlyingImageAndNotifyWithWebURL:(NSURL *)url {
     @try {
-        [[SDWebImageDownloader sharedDownloader] downloadImageWithURL:url options:0 progress:^(NSInteger receivedSize, NSInteger expectedSize) {
+        [[SDWebImageDownloader sharedDownloader] downloadImageWithURL:url options:9 progress:^(NSInteger receivedSize, NSInteger expectedSize, NSURL * _Nullable targetURL) {
             if (expectedSize > 0) {
                 float progress = receivedSize / (float)expectedSize;
                 NSDictionary* dict = [NSDictionary dictionaryWithObjectsAndKeys:
@@ -220,11 +220,12 @@
                                       self, @"photo", nil];
                 [[NSNotificationCenter defaultCenter] postNotificationName:MWPHOTO_PROGRESS_NOTIFICATION object:dict];
             }
-        } completed:^(UIImage *image, NSData *data, NSError *error, BOOL finished) {
+        } completed:^(UIImage * _Nullable image, NSData * _Nullable data, NSError * _Nullable error, BOOL finished) {
             if (error) {
                 MWLog(@"SDWebImage failed to download image: %@", error);
             }
             _webImageOperation = nil;
+            self.image = image;
             self.underlyingImage = image;
             dispatch_async(dispatch_get_main_queue(), ^{
                 [self imageLoadingComplete];
